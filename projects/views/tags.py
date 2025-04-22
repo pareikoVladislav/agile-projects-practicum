@@ -1,3 +1,4 @@
+from django.core.serializers import serialize
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -34,4 +35,31 @@ class TagsCreateListAPIView(APIView):
                 data=serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+class TagsRetrieveUpdateDeleteAPIView(APIView):
+    def put(self, request: Request, *args, **kwargs):
+        tag = Tag.objects.get(pk=kwargs['pk'])
+        serializer = CreateUpdateTagsSerializer(instance=tag, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                data=serializer.data,
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    def delete(self, request: Request, *args, **kwargs):
+        tag = Tag.objects.get(pk=kwargs['pk'])
+        tag.delete()
+        return Response(
+            data={
+                "message": "Объект удалён успешно"
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 

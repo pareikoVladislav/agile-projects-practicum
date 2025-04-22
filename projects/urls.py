@@ -1,7 +1,8 @@
 from django.urls import path
-from projects.views.tags import TagsCreateListAPIView
+from projects.views.tags import TagsCreateListAPIView, TagsRetrieveUpdateDeleteAPIView
 
 urlpatterns = [
     path('tags/', TagsCreateListAPIView.as_view()),
+    path('tags/<int:pk>/', TagsRetrieveUpdateDeleteAPIView.as_view()),
 
 ]
