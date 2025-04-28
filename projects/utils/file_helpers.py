@@ -22,7 +22,7 @@ def check_file_size(file, required_size=2):
 def create_file_path(project_name: str, original_filename: str) -> str:
     ext = Path(original_filename).suffix.lower()
     name = Path(original_filename).stem
-    safe_proj = slugify(project_name)
+    safe_proj = slugify(project_name).replace(' ', '_')
     safe_name = slugify(name)
     return str(Path('documents') / safe_proj / f'{safe_name}{ext}')
 
@@ -34,3 +34,7 @@ def save_file(file_path, file_content):
            f.write(chunk)
 
    return file_path
+
+
+def delete_file(filepath: str) -> None:
+    os.remove(os.path.relpath(filepath))

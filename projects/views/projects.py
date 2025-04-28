@@ -14,9 +14,8 @@ from rest_framework import status
 
 from projects.serializers.projects import (
     ProjectsListSerializer,
-    CreateProjectFileSerializer,
     CreateProjectSerializer,
-    ProjectDetailSerializer, AllProjectFilesSerializer
+    ProjectDetailSerializer,
 )
 
 from projects.models import Project, ProjectFile
