@@ -374,3 +374,722 @@ from projects.models import Project, ProjectFile, Task, Tag, User
 # print(f"Execution time: {end - start}")
 
 # ==================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ==================================================================================
+# ==================================================================================
+
+
+# ==================================================================================
+# ==================================================================================
+
+# Получение списка всех тегов и создание нового тега
+
+
+# serializers.py
+
+from rest_framework import serializers
+# from rest_framework.validators import UniqueValidator
+
+from projects.models import Tag
+
+
+class TagsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = '__all__'
+
+
+class TagCreateUpdateSerializer(serializers.ModelSerializer):
+    # name = serializers.CharField(
+    #     required=True,
+    #     min_length=2,
+    #     validators=[
+    #         UniqueValidator(
+    #             queryset=Tag.objects.all(),
+    #             message="Tag with this name already created."
+    #         )
+    #     ]
+    # )
+
+    class Meta:
+        model = Tag
+        fields = '__all__'
+
+    def validate_name(self, value: str=None) -> str:
+        if not value:
+            raise serializers.ValidationError(
+                'This field is required.'
+            )
+
+        if not isinstance(value, str):
+            raise serializers.ValidationError(
+                'This field must be a valid string.'
+            )
+
+        if len(value) < 2:
+            raise serializers.ValidationError(
+                'The length of this field must be at least 2 characters.'
+            )
+
+        return value
+
+    def create(self, validated_data: dict[str, str | int]) -> Tag:
+        tag_name_exists = Tag.objects.filter(
+            name=validated_data['name']
+        ).exists()
+
+        if tag_name_exists:
+            raise serializers.ValidationError(
+                "Tag with this name already created."
+            )
+
+        return Tag.objects.create(**validated_data)
+
+    def update(self, instance: Tag, validated_data: dict[str, str | int]) -> Tag:
+        tag_name_exists = Tag.objects.exclude(id=instance.pk).filter(
+            name=validated_data['name']
+        ).exists()
+
+        if tag_name_exists:
+            raise serializers.ValidationError(
+                "Tag with this name already created."
+            )
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+
+        return instance
+
+
+
+# ---------------------------------------------------
+
+# views.py
+
+from django.db.models import QuerySet
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
+
+from projects.models import Tag
+from projects.serializers.tags import (
+    TagsSerializer,
+    TagCreateUpdateSerializer
+)
+
+
+class TagsListCreateAPIView(APIView):
+    def get_objects(self) -> QuerySet:
+        return Tag.objects.all()
+
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        tags = self.get_objects()
+
+        if not tags.exists():
+            return Response(
+                data=[],
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        serializer = TagsSerializer(tags, many=True)
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        """
+        {
+            "name": "HR"
+        }
+        """
+        serializer = TagCreateUpdateSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+
+
+# ---------------------------------------------------
+
+
+# urls.py
+
+from django.urls import path
+
+from projects.views.tags import TagsListCreateAPIView
+
+urlpatterns = [
+    path('tags/', TagsListCreateAPIView.as_view())
+]
+
+
+
+# ==================================================================================
+# ==================================================================================
+
+
+# Получение, обновление и удаление тега
+
+# serializers.py (THE SAME)
+
+# ---------------------------------------------------
+
+# views.py
+
+class TagsRetrieveUpdateDeleteAPIView(APIView):
+    def get_object(self, pk: int) -> Tag:
+        return get_object_or_404(Tag, pk=pk)
+
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        serializer = TagsSerializer(tag)
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def put(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        serializer = TagCreateUpdateSerializer(instance=tag, data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer.save()
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def delete(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        tag.delete()
+
+        return Response(
+            data={"message": "Tag was deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+# ---------------------------------------------------
+
+
+# urls.py
+
+from django.urls import path
+
+from projects.views.tags import (
+    TagsListCreateAPIView,
+    TagsRetrieveUpdateDeleteAPIView
+)
+
+
+urlpatterns = [
+    path('tags/', TagsListCreateAPIView.as_view()),
+    path('tags/<int:pk>/', TagsRetrieveUpdateDeleteAPIView.as_view())
+]
+
+
+
+
+
+# ==================================================================================
+# ==================================================================================
+
+
+# Задача 7: Получение списка проектов и создание нового проекта
+
+
+# serializers.py
+
+from rest_framework import serializers
+
+from projects.models import Project
+
+
+class ProjectsListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ('id', 'name', 'date_started')
+
+class CreateProjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = ('name', 'description', 'date_started')
+        read_only_fields = ('date_started', )
+
+    def validate_description(self, value: str) -> str:
+        if len(value) < 30:
+            raise serializers.ValidationError(
+                "Description must be at least 30 characters long"
+            )
+
+        return value
+
+
+# ---------------------------------------------------
+
+
+
+# views.py
+
+from datetime import datetime, timedelta
+
+from django.db.models import QuerySet
+from django.utils import timezone
+
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.generics import get_object_or_404
+from rest_framework.exceptions import ValidationError
+
+from projects.models import Project
+from projects.serializers.projects import (
+    ProjectsListSerializer,
+    CreateProjectSerializer
+)
+
+
+class ProjectsListCreateAPIView(APIView):
+    DATE_FORMAT = '%Y-%m-%d'
+
+    def parse_date(self, date_str: str, name: str) -> timezone.datetime:
+        try:
+            # Парсим строку в naïve datetime
+            naive = datetime.strptime(date_str, self.DATE_FORMAT)
+        except ValueError:
+            raise ValidationError({name: f'Неверный формат даты, ожидается YYYY-MM-DD.'})
+        # Делаем aware по текущему сдвигу
+        return timezone.make_aware(naive)
+
+    def get_objects(self, date_from: str = None, date_to: str = None):
+        qs = Project.objects.all()
+
+        # Фильтрация по дате "от"
+        if date_from:
+            dt_from = self.parse_date(date_from, 'date_from')
+            qs = qs.filter(date_started__gte=dt_from)
+
+        # Фильтрация по дате "до"
+        if date_to:
+            dt_to = self.parse_date(date_to, 'date_to')
+            # Чтобы включить весь день date_to, добавим 23:59:59.999999
+            dt_to = dt_to + timedelta(days=1) - timedelta(microseconds=1)
+        else:
+            # Если пользователь не передал date_to, ставим сейчас
+            dt_to = timezone.now()
+
+        qs = qs.filter(date_started__lte=dt_to)
+        return qs
+
+    def get(self, request: Request) -> Response:
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        projects = self.get_objects(date_from, date_to)
+
+        if not projects.exists():
+            return Response(
+                data=[],
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        serializer = ProjectsListSerializer(projects, many=True)
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+    def post(self, request: Request) -> Response:
+        serializer = CreateProjectSerializer(data=request.data)
+
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+
+            return Response(
+                serializer.validated_data,
+                status=status.HTTP_201_CREATED,
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+# ---------------------------------------------------
+
+
+
+# urls.py
+
+from django.urls import path
+
+from projects.views.tags import (
+    TagsListCreateAPIView,
+    TagsRetrieveUpdateDeleteAPIView
+)
+from projects.views.projects import (
+    ProjectsListCreateAPIView
+)
+
+
+urlpatterns = [
+    path('tags/', TagsListCreateAPIView.as_view()),
+    path('tags/<int:pk>/', TagsRetrieveUpdateDeleteAPIView.as_view()),
+    path('projects/', ProjectsListCreateAPIView.as_view())
+]
+
+
+
+
+
+
+
+
+# ==================================================================================
+# ==================================================================================
+
+
+# Задача 8: Получение, обновление и удаление проекта
+
+
+# serializers.py
+
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
+   class Meta:
+       model = Project
+       fields = ('id', 'name', 'description', 'count_of_files')
+
+
+
+
+# ---------------------------------------------------
+
+
+
+# views.py
+
+class ProjectRetrieveUpdateDeleteAPIView(APIView):
+   def get_object(self, pk: int) -> Project:
+       return get_object_or_404(Project, pk=pk)
+
+   def get(self, request: Request, pk: int) -> Response:
+       project = self.get_object(pk=pk)
+       serializer = ProjectDetailSerializer(project)
+
+       return Response(
+           serializer.data,
+           status=status.HTTP_200_OK,
+       )
+
+   def put(self, request: Request, pk: int) -> Response:
+       project = self.get_object(pk=pk)
+
+       serializer = CreateProjectSerializer(
+           instance=project,
+           data=request.data,
+           partial=True
+       )
+
+       if serializer.is_valid(raise_exception=True):
+           serializer.save()
+           return Response(
+               serializer.validated_data,
+               status=status.HTTP_200_OK,
+           )
+
+       return Response(
+           serializer.errors,
+           status=status.HTTP_400_BAD_REQUEST,
+       )
+
+   def delete(self, request: Request, pk: int) -> Response:
+       project = self.get_object(pk=pk)
+       project.delete()
+
+       return Response(
+           data={
+               "message": "Project was deleted successfully"
+           },
+           status=status.HTTP_200_OK,
+       )
+
+
+
+# ---------------------------------------------------
+
+
+
+# urls.py
+
+from django.urls import path
+
+from projects.views.tags import (
+    TagsListCreateAPIView,
+    TagsRetrieveUpdateDeleteAPIView
+)
+from projects.views.projects import (
+    ProjectsListCreateAPIView,
+    ProjectRetrieveUpdateDeleteAPIView
+)
+
+
+urlpatterns = [
+    path('tags/', TagsListCreateAPIView.as_view()),
+    path('tags/<int:pk>/', TagsRetrieveUpdateDeleteAPIView.as_view()),
+    path('projects/', ProjectsListCreateAPIView.as_view()),
+    path('projects/<int:pk>/', ProjectRetrieveUpdateDeleteAPIView.as_view())
+]
+
+
+
+# ==================================================================================
+# ==================================================================================
+
+
+# Задача 9: Работа с файлами
+
+
+# utils/upload_file_helper.py
+
+import os
+from pathlib import Path
+
+from django.utils.text import slugify
+
+ALLOWED_EXTENSIONS = ['.csv', '.doc', '.pdf', '.xlsx', '.py']
+
+
+def check_extension(filename):
+   return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
+
+
+def check_file_size(file, required_size=2):
+   file_size = file.size / (1024 * 1024)
+
+   if file_size > required_size:
+       return False
+
+   return True
+
+
+def create_file_path(project_name: str, original_filename: str) -> str:
+    ext = Path(original_filename).suffix.lower()
+    name = Path(original_filename).stem
+    safe_proj = slugify(project_name)
+    safe_name = slugify(name)
+    return str(Path('documents') / safe_proj / f'{safe_name}{ext}')
+
+
+def save_file(file_path, file_content):
+   os.makedirs(os.path.dirname('documents/'), exist_ok=True)
+   with open(file_path, 'wb') as f:
+       for chunk in file_content.chunks():
+           f.write(chunk)
+
+   return file_path
+
+
+
+
+# ---------------------------------------------------
+
+
+# serializers.py
+
+class CreateProjectFileSerializer(serializers.ModelSerializer):
+    project_id = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(),
+        write_only=True,
+    )
+
+    class Meta:
+        model = ProjectFile
+        fields = ('project_id',)
+
+    def validate(self, attrs):
+        raw = self.context.get('raw_file')
+        if raw is None:
+            raise serializers.ValidationError({"file": "File is required."})
+
+        if not raw.name.isascii():
+            raise serializers.ValidationError({"file": "Filename must be ASCII."})
+
+        if not check_extension(raw.name):
+            raise serializers.ValidationError(
+                {"file": f"Valid file extensions: {ALLOWED_EXTENSIONS}"}
+            )
+
+        if not check_file_size(raw):
+            raise serializers.ValidationError(
+                {"file": "File size is too large (2 MB max)."}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        project = validated_data.pop('project_id')
+        raw_file = self.context['raw_file']
+        name = raw_file.name
+
+        file_path = create_file_path(
+            project_name=project.name,
+            original_filename=name
+        )
+
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        save_file(
+            file_path=file_path,
+            file_content=raw_file
+        )
+
+        project_file = ProjectFile.objects.create(
+            name=name,
+            file=file_path
+        )
+
+        project_file.projects.add(project)
+
+        return project_file
+
+
+
+# ---------------------------------------------------
+
+
+
+# views.py
+
+class ProjectFileListCreateAPIView(APIView):
+   def get_objects(self, project_name=None):
+       if project_name:
+           project_file = ProjectFile.objects.filter(
+               projects__name=project_name
+           )
+           return project_file
+
+       return ProjectFile.objects.all()
+
+   def get(self, request: Request) -> Response:
+       project_name = request.query_params.get('project')
+
+       project_files = self.get_objects(project_name)
+
+       if not project_files.exists():
+           return Response(
+               data=[],
+               status=status.HTTP_204_NO_CONTENT
+           )
+
+       serializer = AllProjectFilesSerializer(project_files, many=True)
+
+       return Response(
+           serializer.data,
+           status=status.HTTP_200_OK
+       )
+
+   def post(self, request: Request) -> Response:
+       file_content = request.FILES.get("file")
+
+       serializer = CreateProjectFileSerializer(
+           data=request.data,
+           context={
+               "raw_file": file_content,
+           }
+       )
+
+       if serializer.is_valid(raise_exception=True):
+           serializer.save()
+
+           return Response(
+               data={
+                   "message": "File upload successfully"
+               },
+               status=status.HTTP_200_OK
+           )
+
+       else:
+           return Response(
+               data=serializer.errors,
+               status=status.HTTP_400_BAD_REQUEST
+           )
+
+
+
+# ---------------------------------------------------
+
+
+
+# urls.py
+
+
+from django.urls import path
+
+from projects.views.tags import (
+    TagsListCreateAPIView,
+    TagsRetrieveUpdateDeleteAPIView
+)
+from projects.views.projects import (
+    ProjectsListCreateAPIView,
+    ProjectRetrieveUpdateDeleteAPIView
+)
+from projects.views.project_files import (
+    ProjectFileListCreateAPIView
+)
+
+
+urlpatterns = [
+    path('tags/', TagsListCreateAPIView.as_view()),
+    path('tags/<int:pk>/', TagsRetrieveUpdateDeleteAPIView.as_view()),
+    path('projects/', ProjectsListCreateAPIView.as_view()),
+    path('projects/<int:pk>/', ProjectRetrieveUpdateDeleteAPIView.as_view()),
+    path('files/', ProjectFileListCreateAPIView.as_view()),
+]
+
+
+# ==================================================================================
+# ==================================================================================
+
