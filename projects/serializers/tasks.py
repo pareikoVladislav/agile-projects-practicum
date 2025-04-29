@@ -14,10 +14,6 @@ class CreateTaskSerializer(serializers.ModelSerializer):
         queryset=Tag.objects.all(),
         many=True
     )
-    priority = serializers.CharField(
-        choices=Priorities.choices(),
-        error_messages={'ValidationError': f'Priority have to be one of {Priorities.choices()}'}
-    )
 
 
     class Meta:
@@ -41,10 +37,17 @@ class CreateTaskSerializer(serializers.ModelSerializer):
         if value <  timezone.now():
             raise serializers.ValidationError('Due date can not be in the past')
         return value
+    
+    def create(self, validated_data):
+        tags = validated_data.pop('tags', [])
+        task = Task.objects.create(**validated_data)
+        task.tags.set(tags)
+        return task
+
 
 
 class AllTasksSerializer(serializers.ModelSerializer):
-
+    
     project = serializers.SlugRelatedField(
         read_only=True,
         slug_field="name"

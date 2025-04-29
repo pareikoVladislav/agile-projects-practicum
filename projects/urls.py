@@ -9,6 +9,7 @@ from projects.views.projects import (
     ProjectRetrieveUpdateDeleteAPIView,
     ProjectFilesListGenericView
 )
+from projects.views.task import AllTasksListGenericView
 
 
 urlpatterns = [
@@ -19,4 +20,5 @@ urlpatterns = [
     path('projects/<int:pk>/', ProjectRetrieveUpdateDeleteAPIView.as_view()),
 
     path('projects-files/', ProjectFilesListGenericView.as_view()),
+    path('tasks/', AllTasksListGenericView.as_view()),
 ]
