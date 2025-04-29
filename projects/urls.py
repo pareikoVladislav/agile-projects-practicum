@@ -6,7 +6,8 @@ from projects.views.tags import (
 )
 from projects.views.projects import (
     ProjectsListCreateAPIView,
-    ProjectRetrieveUpdateDeleteAPIView
+    ProjectRetrieveUpdateDeleteAPIView,
+    ProjectFilesListGenericView
 )
 
 
@@ -16,4 +17,6 @@ urlpatterns = [
 
     path('projects/', ProjectsListCreateAPIView.as_view()),
     path('projects/<int:pk>/', ProjectRetrieveUpdateDeleteAPIView.as_view()),
+
+    path('projects-files/', ProjectFilesListGenericView.as_view()),
 ]

@@ -5,7 +5,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (
     get_object_or_404,
     ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView
+    RetrieveUpdateDestroyAPIView,
+    ListAPIView
 )
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
@@ -16,6 +17,7 @@ from projects.serializers.projects import (
     ProjectsListSerializer,
     CreateProjectSerializer,
     ProjectDetailSerializer,
+    AllProjectFilesSerializer,
 )
 
 from projects.models import Project, ProjectFile
@@ -136,3 +138,40 @@ class ProjectRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
            },
            status=status.HTTP_200_OK,
        )
+
+
+
+
+    # При получении списка всех файлов должна быть возможность фильтрации файлов
+    # по названию проекта. Если название передано - выдавать только файлы,
+    # относящиеся к конкретному проекту.
+    #
+    # Если фаильтр параметра в запросе не передано - возвращать все файлы целиком.
+    #
+    # При создании нового файла необходимо получить файл из объекта запроса,
+    # после чего передать его в контекст сериализатора.
+
+class ProjectFilesListGenericView(ListAPIView):
+    serializer_class = AllProjectFilesSerializer
+
+    def get_queryset(self):
+        queryset = ProjectFile.objects.all()
+        project_name = self.request.query_params.get("project-name")
+
+        if project_name:
+            queryset = queryset.filter(projects__name=project_name)
+        return queryset
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -41,5 +41,7 @@ class CreateProjectSerializer(serializers.ModelSerializer):
 class AllProjectFilesSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectFile
-        fields = "__all__"
+        # fields = "__all__"
         exclude = ('file',)
+
+
