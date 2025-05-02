@@ -1,65 +1,92 @@
-from django.core.serializers import serialize
+from django.db.models import QuerySet
+from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import status
-from projects.serializers.tags import ListAllTagsSerializer, CreateUpdateTagsSerializer
 
+from projects.serializers.tags import TagsSerializer, CreateUpdateTagsSerializer
 from projects.models import Tag
 
 
-# Create your views here.
-# К созданным сериализаторам необходимо добавить классовые отображения таким образом,
-# чтобы максимально сократить количество эндпоинтов для HTTP методов.
+class TagsListCreateAPIView(APIView):
+    def get_objects(self) -> QuerySet:
+        return Tag.objects.all()
 
-class TagsCreateListAPIView(APIView):
-    def get(self, request: Request):
-        tags = Tag.objects.all()
-        serializer = ListAllTagsSerializer(tags, many=True)
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        tags = self.get_objects()
+
+        if not tags.exists():
+            return Response(
+                data=[],
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        serializer = TagsSerializer(tags, many=True)
+
         return Response(
             data=serializer.data,
             status=status.HTTP_200_OK
-            )
+        )
 
-
-    def post(self, request: Request) -> Response:
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        """
+        {
+            "name": "HR"
+        }
+        """
         serializer = CreateUpdateTagsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                data=serializer.data,
-                status=status.HTTP_201_CREATED
-            )
-        else:
+
+        if not serializer.is_valid():
             return Response(
                 data=serializer.errors,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-class TagsRetrieveUpdateDeleteAPIView(APIView):
-    def put(self, request: Request, *args, **kwargs):
-        tag = Tag.objects.get(pk=kwargs['pk'])
-        serializer = CreateUpdateTagsSerializer(instance=tag, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                data=serializer.data,
-                status=status.HTTP_200_OK
-            )
-        else:
-            return Response(
-                data=serializer.errors,
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    def delete(self, request: Request, *args, **kwargs):
-        tag = Tag.objects.get(pk=kwargs['pk'])
-        tag.delete()
         return Response(
-            data={
-                "message": "Объект удалён успешно"
-            },
-            status=status.HTTP_200_OK
+            data=serializer.data,
+            status=status.HTTP_201_CREATED
         )
 
 
+class TagsRetrieveUpdateDeleteAPIView(APIView):
+    def get_object(self, pk: int) -> Tag:
+        return get_object_or_404(Tag, pk=pk)
 
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        serializer = TagsSerializer(tag)
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def put(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        serializer = CreateUpdateTagsSerializer(instance=tag, data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                data=serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer.save()
+
+        return Response(
+            data=serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    def delete(self, request: Request, *args, **kwargs) -> Response:
+        tag = self.get_object(pk=kwargs['pk'])
+
+        tag.delete()
+
+        return Response(
+            data={"message": "Tag was deleted successfully."},
+            status=status.HTTP_204_NO_CONTENT
+        )
