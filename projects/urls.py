@@ -10,7 +10,7 @@ from projects.views.projects import (
     ProjectFilesListGenericView
 )
 from projects.views.task import AllTasksListGenericView
-
+from projects.views.user import UserCreateAPIView
 
 urlpatterns = [
     path('tags/', TagsListCreateAPIView.as_view()),
@@ -21,5 +21,7 @@ urlpatterns = [
 
     path('projects-files/', ProjectFilesListGenericView.as_view()),
     path('tasks/', AllTasksListGenericView.as_view()),
+    path('user-register/', UserCreateAPIView.as_view()),
+
 
 ]
