@@ -21,4 +21,5 @@ urlpatterns = [
 
     path('projects-files/', ProjectFilesListGenericView.as_view()),
     path('tasks/', AllTasksListGenericView.as_view()),
+
 ]

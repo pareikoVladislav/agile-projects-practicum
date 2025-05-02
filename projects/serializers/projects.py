@@ -75,15 +75,10 @@ class CreateUpdateFileSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         proj_id = validated_data.pop("project_id")
-
         raw_file = self.context.get("raw_file")
-
         file_name = raw_file.name
-
         file_path = create_file_path(proj_id.name, file_name)
-
-        os.makedirs(name=os.path.dirname(file_path), exist_ok=True)
-
+        save_file(file_path, raw_file)
         proj_file = ProjectFile.objects.create(
             name= file_name,
             file= file_path,
