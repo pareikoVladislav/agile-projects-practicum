@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.utils.text import slugify
 
-ALLOWED_EXTENSIONS = ['.csv', '.doc', '.pdf', '.xlsx', '.py']
+ALLOWED_EXTENSIONS = ['.csv', '.doc', '.pdf', '.xlsx', '.py', '.txt']
 
 
 def check_extension(filename):
@@ -28,7 +28,7 @@ def create_file_path(project_name: str, original_filename: str) -> str:
 
 
 def save_file(file_path, file_content):
-   os.makedirs(os.path.dirname('documents/'), exist_ok=True)
+   os.makedirs(os.path.dirname(file_path), exist_ok=True)
    with open(file_path, 'wb') as f:
        for chunk in file_content.chunks():
            f.write(chunk)

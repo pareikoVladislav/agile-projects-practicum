@@ -1,5 +1,7 @@
 from datetime import timedelta, datetime
+from lib2to3.fixes.fix_input import context
 
+from django.template.context_processors import request
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import (
@@ -18,6 +20,7 @@ from projects.serializers.projects import (
     CreateProjectSerializer,
     ProjectDetailSerializer,
     AllProjectFilesSerializer,
+    CreateUpdateFileSerializer
 )
 
 from projects.models import Project, ProjectFile
@@ -141,19 +144,7 @@ class ProjectRetrieveUpdateDeleteAPIView(RetrieveUpdateDestroyAPIView):
 
 
 
-
-    # При получении списка всех файлов должна быть возможность фильтрации файлов
-    # по названию проекта. Если название передано - выдавать только файлы,
-    # относящиеся к конкретному проекту.
-    #
-    # Если фаильтр параметра в запросе не передано - возвращать все файлы целиком.
-    #
-    # При создании нового файла необходимо получить файл из объекта запроса,
-    # после чего передать его в контекст сериализатора.
-
-class ProjectFilesListGenericView(ListAPIView):
-    serializer_class = AllProjectFilesSerializer
-
+class ProjectFilesListGenericView(ListCreateAPIView):
     def get_queryset(self):
         queryset = ProjectFile.objects.all()
         project_name = self.request.query_params.get("project-name")
@@ -162,16 +153,14 @@ class ProjectFilesListGenericView(ListAPIView):
             queryset = queryset.filter(projects__name=project_name)
         return queryset
 
+    def get_serializer_class(self, *args, **kwargs):
+        if self.request.method == "GET":
+            return AllProjectFilesSerializer
+        return CreateUpdateFileSerializer
 
-
-
-
-
-
-
-
-
-
-
-
-
+    def create(self, request, *args, **kwargs):
+        file = request.FILES.get("file")
+        serializer = self.get_serializer(data=request.data, context={"raw_file": file})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(data={"Message": "the File successfully saved"}, status=status.HTTP_201_CREATED)
